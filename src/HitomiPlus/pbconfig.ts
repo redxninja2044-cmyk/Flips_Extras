@@ -1,18 +1,26 @@
-import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/types";
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+import { ContentRating, ExtensionInfo, SourceIntents } from "@paperback/types";
 
 export default {
   name: "Hitomi (CGs + Galleries)",
-  description: "CGs and image galleries from hitomi.la, with a tag blocklist. 18+ only.",
-  version: "1.0.0-alpha.5",
+  description: "pisshammy's Hitomi extension plus CGs, image sets and a gallery type picker. 18+ only.",
+  version: "2.1.0",
   icon: "icon.png",
-  language: "en",
+  language: "multi",
   contentRating: ContentRating.ADULT,
   capabilities: [
-    SourceIntents.CHAPTER_PROVIDING,
     SourceIntents.DISCOVER_SECTION_PROVIDING,
     SourceIntents.SEARCH_RESULT_PROVIDING,
+    SourceIntents.CHAPTER_PROVIDING,
     SourceIntents.SETTINGS_FORM_PROVIDING,
+    SourceIntents.CLOUDFLARE_BYPASS_PROVIDING,
   ],
   badges: [],
-  developers: [{ name: "redxninja2044-cmyk", github: "https://github.com/redxninja2044-cmyk" }],
+  developers: [
+    { name: "Flips Extras (CG/gallery additions)" },
+    {
+      name: "pisshammy",
+      website: "cashapp: $0hammy0",
+    },
+  ],
 } satisfies ExtensionInfo;

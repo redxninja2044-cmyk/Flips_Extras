@@ -11,6 +11,7 @@
   "devDependencies": {
     "@paperback/toolchain": "^1.0.0-alpha.94",
     "@paperback/types": "^1.0.0-alpha.94",
+    "cheerio": "^1.2.0",
     "typescript": "^7.0.2"
   }
 }
