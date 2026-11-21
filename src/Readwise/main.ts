@@ -15,23 +15,16 @@ import {
   type SourceManga,
 } from "@paperback/types";
 
-import { getDoc, isDocument, listDocs, type ReaderDoc } from "./api";
+import { BOOK_CATEGORIES, getAllBooks, getDoc, isDocument, listDocs, tagNames, type ReaderDoc } from "./api";
 import { toXhtmlBody } from "./html";
 import type ReadwiseConfig from "./pbconfig";
 import { ReadwiseSettingsForm } from "./settings";
 
-type Cursor = { cursor?: string } | undefined;
-
-const SECTIONS: { id: string; title: string; params: Record<string, string> }[] = [
-  { id: "later", title: "Later", params: { location: "later" } },
-  { id: "new", title: "Inbox", params: { location: "new" } },
-  { id: "shortlist", title: "Shortlist", params: { location: "shortlist" } },
-  { id: "epub", title: "Books (EPUB)", params: { category: "epub" } },
-  { id: "archive", title: "Archive", params: { location: "archive" } },
-];
+type BookCursor = { cat: number; cursor?: string } | undefined;
+type TagFilter = { tags?: Record<string, string> };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  article: "Article", email: "Email", rss: "Feed", pdf: "PDF", epub: "Book",
+  article: "Article", email: "Email", rss: "Feed", pdf: "Book", epub: "Book",
   tweet: "Tweet", video: "Video",
 };
 
@@ -62,21 +55,33 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
   }
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
-    return SECTIONS.map((s) => ({
-      id: s.id,
-      title: s.title,
-      type: DiscoverSectionType.simpleCarousel,
-    }));
+    return [
+      { id: "books", title: "Books", type: DiscoverSectionType.simpleCarousel },
+      { id: "tags", title: "Tags", type: DiscoverSectionType.genres },
+    ];
   }
 
   async getDiscoverSectionItems(
     section: DiscoverSection,
-    metadata: Cursor,
+    metadata: BookCursor,
   ): Promise<PagedResults<DiscoverSectionItem>> {
-    const def = SECTIONS.find((s) => s.id === section.id);
-    if (!def) return { items: [], metadata: undefined };
+    if (section.id === "tags") {
+      const names = new Set<string>();
+      for (const book of await getAllBooks()) tagNames(book).forEach((t) => names.add(t));
+      return {
+        items: [...names].sort((x, y) => x.localeCompare(y)).map((name) => ({
+          type: "genresCarouselItem",
+          searchQuery: { title: "", metadata: { tags: { [name]: "included" } } },
+          name,
+          metadata: undefined,
+        })),
+        metadata: undefined,
+      };
+    }
 
-    const res = await listDocs({ ...def.params, pageCursor: metadata?.cursor });
+    // Books = EPUBs first, then PDFs, paged through Readwise's cursors.
+    const cat = metadata?.cat ?? 0;
+    const res = await listDocs({ category: BOOK_CATEGORIES[cat], pageCursor: metadata?.cursor });
     const items: DiscoverSectionItem[] = res.results.filter(isDocument).map((doc) => ({
       type: "simpleCarouselItem",
       mangaId: doc.id,
@@ -84,39 +89,36 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
       imageUrl: cover(doc),
       subtitle: doc.author ?? undefined,
     }));
-    return {
-      items,
-      metadata: res.nextPageCursor ? { cursor: res.nextPageCursor } : undefined,
-    };
+    let next: BookCursor;
+    if (res.nextPageCursor) next = { cat, cursor: res.nextPageCursor };
+    else if (cat + 1 < BOOK_CATEGORIES.length) next = { cat: cat + 1 };
+    return { items, metadata: next };
   }
 
   async getSearchResults(
     query: SearchQuery<JSONValue>,
-    metadata: Cursor,
+    _metadata: JSONValue | undefined,
   ): Promise<PagedResults<SearchResultItem>> {
-    // The Reader API has no text search, so scan a few pages of the library
-    // and match title/author locally.
     const needle = (query.title ?? "").toLowerCase().trim();
-    let cursor = metadata?.cursor;
-    const items: SearchResultItem[] = [];
+    const filter = (query.metadata ?? {}) as TagFilter;
+    const included = Object.entries(filter.tags ?? {})
+      .filter(([, v]) => v === "included")
+      .map(([k]) => k);
 
-    for (let i = 0; i < 3; i++) {
-      const res = await listDocs({ pageCursor: cursor });
-      for (const doc of res.results.filter(isDocument)) {
+    const items: SearchResultItem[] = (await getAllBooks())
+      .filter((doc) => {
         const hay = `${doc.title ?? ""} ${doc.author ?? ""}`.toLowerCase();
-        if (!needle || hay.includes(needle)) {
-          items.push({
-            mangaId: doc.id,
-            title: docTitle(doc),
-            imageUrl: cover(doc),
-            subtitle: doc.author ?? undefined,
-          });
-        }
-      }
-      cursor = res.nextPageCursor ?? undefined;
-      if (!cursor) break;
-    }
-    return { items, metadata: cursor ? { cursor } : undefined };
+        if (needle && !hay.includes(needle)) return false;
+        const tags = tagNames(doc);
+        return included.every((t) => tags.includes(t));
+      })
+      .map((doc) => ({
+        mangaId: doc.id,
+        title: docTitle(doc),
+        imageUrl: cover(doc),
+        subtitle: doc.author ?? undefined,
+      }));
+    return { items, metadata: undefined };
   }
 
   getMangaShareUrl(mangaId: string): string {
@@ -132,9 +134,15 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
         primaryTitle: docTitle(doc),
         secondaryTitles: [],
         contentType: "novel",
-        status: doc.location ? `${category} (${doc.location})` : category,
+        status: category,
         author: doc.author ?? "",
-        tagGroups: [],
+        tagGroups: [
+          {
+            id: "tags",
+            title: "Tags",
+            tags: tagNames(doc).map((t) => ({ id: t, title: t })),
+          },
+        ],
         synopsis: doc.summary ?? "",
         thumbnailUrl: cover(doc),
         contentRating: ContentRating.EVERYONE,

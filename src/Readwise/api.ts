@@ -18,6 +18,7 @@ export type ReaderDoc = {
   updated_at?: string;
   html_content?: string | null;
   content?: string | null;
+  tags?: Record<string, { name?: string }> | string[] | null;
 };
 
 type ListResponse = {
@@ -64,4 +65,32 @@ export async function getDoc(id: string, withHtml: boolean): Promise<ReaderDoc> 
 // Highlights and notes are also returned by /list; they have a parent_id.
 export function isDocument(doc: ReaderDoc): boolean {
   return !doc.parent_id && doc.category !== "highlight" && doc.category !== "note";
+}
+
+export const BOOK_CATEGORIES = ["epub", "pdf"];
+
+export function tagNames(doc: ReaderDoc): string[] {
+  const t = doc.tags;
+  if (!t) return [];
+  if (Array.isArray(t)) return t;
+  return Object.entries(t).map(([k, v]) => v?.name ?? k);
+}
+
+// Small in-memory cache of the whole book list, used by Tags and Search.
+let cache: { at: number; books: ReaderDoc[] } | undefined;
+
+export async function getAllBooks(): Promise<ReaderDoc[]> {
+  if (cache && Date.now() - cache.at < 5 * 60 * 1000) return cache.books;
+  const books: ReaderDoc[] = [];
+  for (const category of BOOK_CATEGORIES) {
+    let cursor: string | undefined;
+    for (let i = 0; i < 5; i++) {
+      const res = await listDocs({ category, pageCursor: cursor });
+      books.push(...res.results.filter(isDocument));
+      cursor = res.nextPageCursor ?? undefined;
+      if (!cursor) break;
+    }
+  }
+  cache = { at: Date.now(), books };
+  return books;
 }
