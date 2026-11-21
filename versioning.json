@@ -1,0 +1,35 @@
+{
+  "buildTime": "2026-11-21T04:53:25.866Z",
+  "builtWith": {
+    "toolchain": "1.0.0-alpha.95",
+    "types": "1.0.0-alpha.95"
+  },
+  "repository": {
+    "name": "paperback-readwise",
+    "description": "Paperback extension for your Readwise Reader library."
+  },
+  "sources": [
+    {
+      "name": "Readwise Reader",
+      "description": "Read your own Readwise Reader library (articles, EPUBs, PDFs as text) in Paperback. Needs your Readwise access token.",
+      "version": "1.0.0-alpha.1",
+      "icon": "icon.png",
+      "language": "en",
+      "contentRating": "SAFE",
+      "capabilities": [
+        1,
+        4,
+        64,
+        32
+      ],
+      "badges": [],
+      "developers": [
+        {
+          "name": "redxninja2044-cmyk",
+          "github": "https://github.com/redxninja2044-cmyk"
+        }
+      ],
+      "id": "Readwise"
+    }
+  ]
+}
