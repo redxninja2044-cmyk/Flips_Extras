@@ -29,9 +29,11 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 // Only hand Paperback absolute web URLs; EPUBs often have relative ones like ../media/cover.jpg.
+const PLACEHOLDER = "https://redxninja2044-cmyk.github.io/PaperBack_Readwise/Readwise/static/icon.png";
+
 function cover(doc: ReaderDoc): string {
   const url = doc.image_url ?? "";
-  return /^https?:\/\//i.test(url) ? url : "";
+  return /^https?:\/\//i.test(url) ? url : PLACEHOLDER;
 }
 
 function docTitle(doc: ReaderDoc): string {
