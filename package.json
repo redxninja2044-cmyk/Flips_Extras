@@ -1,7 +1,7 @@
 {
-  "name": "paperback-readwise",
+  "name": "Flips Extras",
   "private": true,
-  "description": "Paperback extension for your Readwise Reader library.",
+  "description": "Flips Extras: Readwise Reader and Hitomi (CGs + Galleries) for Paperback.",
   "type": "module",
   "scripts": {
     "tsc": "tsc",
