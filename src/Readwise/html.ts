@@ -14,6 +14,9 @@ export function toXhtmlBody(html: string): string {
   return html
     .replace(/<(script|style|iframe|noscript)[\s\S]*?<\/\1>/gi, "")
     .replace(/<!--[\s\S]*?-->/g, "")
+    // Drop images whose src isn't an absolute web URL (EPUB-internal paths can't load).
+    .replace(/<img\b[^>]*>/gi, (tag) => (/\ssrc\s*=\s*["']https?:\/\//i.test(tag) ? tag : ""))
+    .replace(/<(svg)[\s\S]*?<\/svg>/gi, "")
     .replace(VOID_RE, (_m, tag: string, attrs: string) => {
       const a = attrs.trim();
       return a ? `<${tag.toLowerCase()} ${a} />` : `<${tag.toLowerCase()} />`;
@@ -24,31 +27,3 @@ export function toXhtmlBody(html: string): string {
     });
 }
 
-export type Part = { title: string; html: string };
-
-// Split long documents (mostly EPUBs) into chapters at h1/h2 headings.
-// Short articles or documents without headings stay as a single chapter.
-export function splitIntoParts(html: string, fallbackTitle: string): Part[] {
-  const re = /<h([12])\b[^>]*>([\s\S]*?)<\/h\1>/gi;
-  const marks: { index: number; title: string }[] = [];
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const title = (m[2] ?? "").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim();
-    marks.push({ index: m.index, title });
-  }
-
-  if (marks.length < 2 || html.length < 30000) {
-    return [{ title: fallbackTitle, html }];
-  }
-
-  const parts: Part[] = [];
-  const intro = html.slice(0, marks[0]!.index);
-  if (intro.replace(/<[^>]+>/g, "").trim().length > 200) {
-    parts.push({ title: "Start", html: intro });
-  }
-  marks.forEach((mark, i) => {
-    const end = i + 1 < marks.length ? marks[i + 1]!.index : html.length;
-    parts.push({ title: mark.title || `Part ${parts.length + 1}`, html: html.slice(mark.index, end) });
-  });
-  return parts;
-}

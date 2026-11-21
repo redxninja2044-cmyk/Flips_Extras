@@ -16,7 +16,7 @@ import {
 } from "@paperback/types";
 
 import { getDoc, isDocument, listDocs, type ReaderDoc } from "./api";
-import { splitIntoParts, toXhtmlBody } from "./html";
+import { toXhtmlBody } from "./html";
 import type ReadwiseConfig from "./pbconfig";
 import { ReadwiseSettingsForm } from "./settings";
 
@@ -34,6 +34,12 @@ const CATEGORY_LABEL: Record<string, string> = {
   article: "Article", email: "Email", rss: "Feed", pdf: "PDF", epub: "Book",
   tweet: "Tweet", video: "Video",
 };
+
+// Only hand Paperback absolute web URLs; EPUBs often have relative ones like ../media/cover.jpg.
+function cover(doc: ReaderDoc): string {
+  const url = doc.image_url ?? "";
+  return /^https?:\/\//i.test(url) ? url : "";
+}
 
 function docTitle(doc: ReaderDoc): string {
   return doc.title?.trim() || doc.source_url || "Untitled";
@@ -75,7 +81,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
       type: "simpleCarouselItem",
       mangaId: doc.id,
       title: docTitle(doc),
-      imageUrl: doc.image_url ?? "",
+      imageUrl: cover(doc),
       subtitle: doc.author ?? undefined,
     }));
     return {
@@ -102,7 +108,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
           items.push({
             mangaId: doc.id,
             title: docTitle(doc),
-            imageUrl: doc.image_url ?? "",
+            imageUrl: cover(doc),
             subtitle: doc.author ?? undefined,
           });
         }
@@ -130,7 +136,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
         author: doc.author ?? "",
         tagGroups: [],
         synopsis: doc.summary ?? "",
-        thumbnailUrl: doc.image_url ?? "",
+        thumbnailUrl: cover(doc),
         contentRating: ContentRating.EVERYONE,
         shareUrl: this.getMangaShareUrl(mangaId),
       },
@@ -138,37 +144,32 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
   }
 
   async getChapters(sourceManga: SourceManga): Promise<Chapter[]> {
-    const doc = await getDoc(sourceManga.mangaId, true);
-    const html = doc.html_content ?? "";
-    const parts = splitIntoParts(html, docTitle(doc));
-    const date = new Date(doc.updated_at ?? doc.created_at ?? Date.now());
-
-    return parts.map((part, i) => ({
-      chapterId: `${doc.id}::${i}`,
-      title: part.title,
-      chapNum: i + 1,
-      volume: 0,
-      langCode: "en",
-      publishDate: date,
-      sourceManga,
-    }));
+    // One long chapter per document so Paperback keeps your scroll position.
+    const doc = await getDoc(sourceManga.mangaId, false);
+    return [
+      {
+        chapterId: doc.id,
+        title: docTitle(doc),
+        chapNum: 1,
+        volume: 0,
+        langCode: "en",
+        publishDate: new Date(doc.updated_at ?? doc.created_at ?? Date.now()),
+        sourceManga,
+      },
+    ];
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-    const [docId, idx] = chapter.chapterId.split("::");
-    const doc = await getDoc(docId!, true);
+    const docId = chapter.chapterId.split("::")[0]!;
+    const doc = await getDoc(docId, true);
     const html = doc.html_content ?? "";
     if (!html) {
       throw new Error("Readwise has no readable text for this document (it may be a video or scanned PDF).");
     }
-    const parts = splitIntoParts(html, docTitle(doc));
-    const part = parts[Number(idx ?? 0)] ?? parts[0]!;
-
-    const heading = parts.length === 1 ? `<h2>${toXhtmlBody(docTitle(doc))}</h2>\n` : "";
-    const body = toXhtmlBody(heading + part.html);
+    const body = toXhtmlBody(`<h2>${docTitle(doc)}</h2>\n` + html);
     return {
       id: chapter.chapterId,
-      mangaId: docId!,
+      mangaId: docId,
       type: "html",
       html: `<html xmlns="http://www.w3.org/1999/xhtml"><head></head><body>${body}</body></html>`,
     };
