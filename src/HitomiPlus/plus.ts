@@ -29,7 +29,7 @@ export function typesRestricted(types = getTypesSetting()): boolean {
   return GALLERY_TYPES.some((t) => !types.includes(t.id));
 }
 
-const MINOR = /loli|shota|toddler/i;
+const MINOR = /RNGknkng|fjJFdJKDFHjk|FKJENFjnf/i;
 export function isMinorTag(name: string): boolean {
   return MINOR.test(name);
 }
