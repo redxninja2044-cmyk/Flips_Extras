@@ -226,7 +226,7 @@ function hashTerm(term: string): Uint8Array {
 
 function normalizeSearchTerm(term: string): string {
   return term
-    .replace(/[/#]/g, "")
+    .replace(/[#]/g, "")
     .replace(/_/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase()
@@ -482,13 +482,7 @@ export async function searchGalleryIdsByTerm(
     const version = await getGalleriesIndexVersion(fetcher);
     const partResults: number[][] = [];
     for (const part of parts) {
-      const result = await searchGalleryIdsByNormalizedTerm(
-        part,
-        fetcher,
-        false,
-        version,
-      );
-      partResults.push(result);
+      partResults.push(await lookupWordWithVariants(part, fetcher, version));
     }
 
     return partResults.every((result) => result.length > 0)
@@ -496,7 +490,7 @@ export async function searchGalleryIdsByTerm(
       : [];
   }
 
-  let ids = await searchGalleryIdsByNormalizedTerm(normalized, fetcher);
+  let ids = await lookupWordWithVariants(normalized, fetcher);
 
   // Retry once with a freshly fetched version.  Hitomi can publish a new
   // galleries.<version> pair while the short-lived extension cache still points
@@ -506,6 +500,36 @@ export async function searchGalleryIdsByTerm(
   }
 
   return ids;
+}
+
+// Flips Extras: words with punctuation (re:zero, fate/stay, x-men, d.va) are tried as typed first,
+// then split at the punctuation, then with the punctuation removed.
+const PUNCT = /[:\-\/.,!?'"()\[\]{}~;|+*&@]/;
+async function lookupWordWithVariants(
+  word: string,
+  fetcher: BTreeFetcher,
+  version?: string,
+): Promise<number[]> {
+  const exact = await searchGalleryIdsByNormalizedTerm(word, fetcher, false, version);
+  if (exact.length > 0 || !PUNCT.test(word)) return exact;
+
+  const pieces = word.split(new RegExp(PUNCT.source, "g")).filter((p) => p.length > 0);
+  if (pieces.length > 1) {
+    const results: number[][] = [];
+    for (const piece of pieces) {
+      results.push(await searchGalleryIdsByNormalizedTerm(piece, fetcher, false, version));
+    }
+    if (results.every((r) => r.length > 0)) {
+      const joined = intersectIdLists(results);
+      if (joined.length > 0) return joined;
+    }
+  }
+
+  const stripped = word.replace(new RegExp(PUNCT.source, "g"), "");
+  if (stripped && stripped !== word) {
+    return searchGalleryIdsByNormalizedTerm(stripped, fetcher, false, version);
+  }
+  return [];
 }
 
 export function invalidateVersionCache(): void {
