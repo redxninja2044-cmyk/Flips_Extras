@@ -346,7 +346,7 @@ export const DATE_FILTER_OPTIONS: { id: string; label: string }[] = [
   { id: "year", label: "Past Year" },
 ];
 
-const DEFAULT_LANGUAGE: LanguageId[] = ["english"];
+const DEFAULT_LANGUAGE: LanguageId[] = ["all"];
 const DEFAULT_HIDE_READ = true;
 const DEFAULT_EXTRA_ARGS = "";
 const DEFAULT_INCLUDE_TAGS = "";

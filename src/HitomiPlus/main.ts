@@ -3305,11 +3305,11 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
         "vietnamese",
       ];
       for (const lang of languages) {
-        if (titleQuery.toLowerCase().includes(lang)) {
+        if (new RegExp(`(^|\\s)${lang}(\\s|$)`, "i").test(titleQuery)) {
           if (!tags.find((t) => t.type === "language" && t.name === lang)) {
             tags.push({ type: "language", name: lang, isNegative: false });
           }
-          titleQuery = titleQuery.replace(new RegExp(lang, "ig"), "").trim();
+          titleQuery = titleQuery.replace(new RegExp(`(^|\\s)${lang}(?=\\s|$)`, "ig"), " ").trim();
         }
       }
 
