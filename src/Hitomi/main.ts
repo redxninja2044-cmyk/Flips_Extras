@@ -19,13 +19,14 @@ import {
 
 import {
   BASE,
-  LANG,
+  lang,
+  typeIds,
+  isHidden,
   LTN,
   PAGE_SIZE,
   coverUrl,
   getGalleries,
   getGallery,
-  isBlocked,
   nozomiAll,
   nozomiForTerm,
   nozomiPage,
@@ -35,8 +36,9 @@ import {
   type Gallery,
 } from "./api";
 import type HitomiConfig from "./pbconfig";
+import { HitomiSettingsForm } from "./settings";
 
-type Page = { page: number } | undefined;
+type Page = { page?: number; offset?: number } | undefined;
 
 class RefererInterceptor extends PaperbackInterceptor {
   override async interceptRequest(request: Request): Promise<Request> {
@@ -48,14 +50,16 @@ class RefererInterceptor extends PaperbackInterceptor {
   }
 }
 
-const SECTIONS: Record<string, { title: string; url: string }> = {
-  today: { title: "Popular Today", url: `${LTN}/popular/today-${LANG}.nozomi` },
-  week: { title: "Popular This Week", url: `${LTN}/popular/week-${LANG}.nozomi` },
-  latest: { title: "Latest", url: `${LTN}/index-${LANG}.nozomi` },
-  month: { title: "Popular This Month", url: `${LTN}/popular/month-${LANG}.nozomi` },
+const SECTIONS: Record<string, { title: string; url: () => string }> = {
+  today: { title: "Popular Today", url: () => `${LTN}/popular/today-${lang()}.nozomi` },
+  week: { title: "Popular This Week", url: () => `${LTN}/popular/week-${lang()}.nozomi` },
+  latest: { title: "Latest", url: () => `${LTN}/index-${lang()}.nozomi` },
+  month: { title: "Popular This Month", url: () => `${LTN}/popular/month-${lang()}.nozomi` },
+  year: { title: "Popular This Year", url: () => `${LTN}/popular/year-${lang()}.nozomi` },
 };
 
 const searchCache = new Map<string, number[]>();
+const cacheKey = (t: string) => `${t}|${lang()}|${JSON.stringify(Application.getState("hitomi.types") ?? "")}`;
 
 function artistLine(g: Gallery): string {
   const names = [...(g.artists ?? []).map((a) => a.artist), ...(g.groups ?? []).map((x) => x.group)];
@@ -65,6 +69,10 @@ function artistLine(g: Gallery): string {
 export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
   rateLimiter = new BasicRateLimiter("hitomi", { numberOfRequests: 15, bufferInterval: 1, ignoreImages: true });
   interceptor = new RefererInterceptor("hitomi-referer");
+
+  async getSettingsForm() {
+    return new HitomiSettingsForm();
+  }
 
   async initialise(): Promise<void> {
     this.rateLimiter.registerInterceptor();
@@ -80,8 +88,7 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
   }
 
   async getDiscoverSectionItems(section: DiscoverSection, metadata: Page): Promise<PagedResults<DiscoverSectionItem>> {
-    const page = metadata?.page ?? 0;
-    const { ids, more } = await nozomiPage(SECTIONS[section.id]!.url, page);
+    const { ids, next } = await nozomiPage(SECTIONS[section.id]!.url(), metadata?.offset ?? 0);
     const items: DiscoverSectionItem[] = (await getGalleries(ids)).map((g) => ({
       type: "simpleCarouselItem",
       mangaId: String(g.id),
@@ -89,7 +96,7 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
       imageUrl: coverUrl(g),
       subtitle: artistLine(g) || undefined,
     }));
-    return { items, metadata: more ? { page: page + 1 } : undefined };
+    return { items, metadata: next !== undefined ? { offset: next } : undefined };
   }
 
   // Search box: plain words, namespaced terms like female:glasses / artist:name / series:name, and -term to exclude.
@@ -99,12 +106,16 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
     let ids: number[];
 
     if (!text) {
-      ({ ids } = await nozomiPage(SECTIONS.latest!.url, page));
+      const r = await nozomiPage(SECTIONS.latest!.url(), metadata?.offset ?? 0);
+      const items = (await getGalleries(r.ids)).map((g) => ({
+        mangaId: String(g.id), title: g.title, imageUrl: coverUrl(g), subtitle: artistLine(g) || undefined,
+      }));
+      return { items, metadata: r.next !== undefined ? { offset: r.next } : undefined };
     } else {
-      let all = searchCache.get(text);
+      let all = searchCache.get(cacheKey(text));
       if (!all) {
         all = await this.runSearch(text);
-        searchCache.set(text, all);
+        searchCache.set(cacheKey(text), all);
       }
       ids = all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
     }
@@ -127,9 +138,10 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
       return url ? nozomiAll(url) : searchWord(t).catch(() => []);
     };
 
-    // A gallery id must be English to show up.
-    const sets = await Promise.all([...include.map(fetchTerm), nozomiAll(`${LTN}/index-${LANG}.nozomi`)]);
-    let result = sets[0] ?? [];
+    // Must also be in the chosen language and types.
+    const sets = await Promise.all([...include.map(fetchTerm), nozomiAll(`${LTN}/index-${lang()}.nozomi`)]);
+    const allowed = await typeIds();
+    let result = (sets[0] ?? []).filter((id) => !allowed || allowed.has(id));
     for (const s of sets.slice(1)) {
       const keep = new Set(s);
       result = result.filter((id) => keep.has(id));
@@ -144,7 +156,7 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
 
   async getMangaDetails(mangaId: string): Promise<SourceManga> {
     const g = await getGallery(mangaId);
-    if (isBlocked(g)) throw new Error("This gallery isn't available in this extension.");
+    if (isHidden(g)) throw new Error("This gallery is hidden by your settings.");
     const extra = [
       g.japanese_title ? `Japanese title: ${g.japanese_title}` : "",
       `Type: ${g.type}`,
@@ -192,7 +204,7 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     const g = await getGallery(chapter.chapterId);
-    if (isBlocked(g)) throw new Error("This gallery isn't available in this extension.");
+    if (isHidden(g)) throw new Error("This gallery isn't available in this extension.");
     return { id: chapter.chapterId, mangaId: chapter.sourceManga.mangaId, pages: await pageUrls(g) };
   }
 }

@@ -4,7 +4,9 @@ export const BASE = "https://hitomi.la";
 export const LTN = "https://ltn.gold-usergeneratedcontent.net";
 const CDN = "gold-usergeneratedcontent.net";
 export const PAGE_SIZE = 25;
-export const LANG = "english";
+import { getBlocklist, getLanguage, getTypes, TYPES } from "./settings";
+
+export const lang = () => getLanguage();
 
 // Galleries with any of these tags are never shown.
 const BLOCKED = ["loli", "shota", "toddler", "lolicon", "shotacon", "toddlercon", "oppai loli", "low lolicon", "low shotacon"];
@@ -57,13 +59,62 @@ export function isBlocked(g: Gallery): boolean {
   });
 }
 
+function labels(g: Gallery): Set<string> {
+  const out = new Set<string>();
+  for (const t of g.tags ?? []) {
+    out.add(t.tag.toLowerCase());
+    out.add(tagLabel(t).toLowerCase());
+  }
+  for (const a of g.artists ?? []) out.add(`artist:${a.artist}`.toLowerCase());
+  for (const x of g.groups ?? []) out.add(`group:${x.group}`.toLowerCase());
+  for (const x of g.parodys ?? []) out.add(`series:${x.parody}`.toLowerCase());
+  for (const x of g.characters ?? []) out.add(`character:${x.character}`.toLowerCase());
+  return out;
+}
+
+/** Hidden by the built-in block, the user's blocklist, or the type filter. */
+export function isHidden(g: Gallery): boolean {
+  if (isBlocked(g)) return true;
+  if (!getTypes().includes(g.type)) return true;
+  const block = getBlocklist();
+  if (!block.length) return false;
+  const have = labels(g);
+  return block.some((b) => have.has(b));
+}
+
+// Ids of every gallery of the chosen types, so lists can be filtered before downloading gallery info.
+let typeCache: { key: string; ids: Set<number> } | undefined;
+export async function typeIds(): Promise<Set<number> | undefined> {
+  const types = getTypes();
+  if (types.length >= TYPES.length) return undefined;
+  const key = `${types.join(",")}|${lang()}`;
+  if (typeCache?.key === key) return typeCache.ids;
+  const lists = await Promise.all(types.map((t) => nozomiAll(`${LTN}/type/${t}-${lang()}.nozomi`)));
+  typeCache = { key, ids: new Set(lists.flat()) };
+  return typeCache.ids;
+}
+
 // ---------- lists (.nozomi files are big-endian uint32 gallery ids) ----------
 
-export async function nozomiPage(url: string, page: number): Promise<{ ids: number[]; more: boolean }> {
-  const start = page * PAGE_SIZE * 4;
-  const buf = await get(url, `bytes=${start}-${start + PAGE_SIZE * 4 - 1}`);
-  const ids = readIds(buf);
-  return { ids, more: ids.length === PAGE_SIZE };
+const CHUNK = 500;
+
+/** Reads a list from `offset`, keeping only ids of the chosen types, until a page is full. */
+export async function nozomiPage(url: string, offset: number): Promise<{ ids: number[]; next?: number }> {
+  const allowed = await typeIds();
+  const ids: number[] = [];
+  let pos = offset;
+  for (let round = 0; round < 6 && ids.length < PAGE_SIZE; round++) {
+    const want = allowed ? CHUNK : PAGE_SIZE - ids.length;
+    const buf = await get(url, `bytes=${pos * 4}-${(pos + want) * 4 - 1}`);
+    const chunk = readIds(buf);
+    for (const id of chunk) {
+      pos++;
+      if (!allowed || allowed.has(id)) ids.push(id);
+      if (ids.length >= PAGE_SIZE) break;
+    }
+    if (chunk.length < want && ids.length < PAGE_SIZE) return { ids };
+  }
+  return { ids, next: pos };
 }
 
 export async function nozomiAll(url: string): Promise<number[]> {
@@ -80,8 +131,8 @@ export function nozomiForTerm(term: string): string | undefined {
   if (i < 0) return undefined;
   const ns = q.slice(0, i).trim().toLowerCase();
   const tag = encodeURIComponent(q.slice(i + 1).trim().toLowerCase());
-  if (ns === "female" || ns === "male") return `${LTN}/tag/${ns}:${tag}-${LANG}.nozomi`;
-  if (["artist", "group", "series", "character", "tag", "type"].includes(ns)) return `${LTN}/${ns}/${tag}-${LANG}.nozomi`;
+  if (ns === "female" || ns === "male") return `${LTN}/tag/${ns}:${tag}-${lang()}.nozomi`;
+  if (["artist", "group", "series", "character", "tag", "type"].includes(ns)) return `${LTN}/${ns}/${tag}-${lang()}.nozomi`;
   return undefined;
 }
 
@@ -102,7 +153,7 @@ export async function getGallery(id: string | number): Promise<Gallery> {
 
 export async function getGalleries(ids: number[]): Promise<Gallery[]> {
   const res = await Promise.all(ids.map((id) => getGallery(id).catch(() => undefined)));
-  return res.filter((g): g is Gallery => !!g && !isBlocked(g));
+  return res.filter((g): g is Gallery => !!g && !isHidden(g));
 }
 
 export function coverUrl(g: Gallery): string {

@@ -2,8 +2,8 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 
 export default {
   name: "Hitomi",
-  description: "Read galleries from hitomi.la. 18+ only.",
-  version: "1.0.0-alpha.1",
+  description: "CGs and image galleries from hitomi.la, with a tag blocklist. 18+ only.",
+  version: "1.0.0-alpha.2",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.ADULT,
@@ -11,6 +11,7 @@ export default {
     SourceIntents.CHAPTER_PROVIDING,
     SourceIntents.DISCOVER_SECTION_PROVIDING,
     SourceIntents.SEARCH_RESULT_PROVIDING,
+    SourceIntents.SETTINGS_FORM_PROVIDING,
   ],
   badges: [],
   developers: [{ name: "redxninja2044-cmyk", github: "https://github.com/redxninja2044-cmyk" }],
