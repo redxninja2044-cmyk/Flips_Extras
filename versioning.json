@@ -1,5 +1,5 @@
 {
-  "buildTime": "2026-11-21T16:52:19.589Z",
+  "buildTime": "2026-11-21T17:02:20.655Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
@@ -11,15 +11,16 @@
   "sources": [
     {
       "name": "Hitomi",
-      "description": "Read galleries from hitomi.la. 18+ only.",
-      "version": "1.0.0-alpha.1",
+      "description": "CGs and image galleries from hitomi.la, with a tag blocklist. 18+ only.",
+      "version": "1.0.0-alpha.2",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "ADULT",
       "capabilities": [
         1,
         4,
-        64
+        64,
+        32
       ],
       "badges": [],
       "developers": [
