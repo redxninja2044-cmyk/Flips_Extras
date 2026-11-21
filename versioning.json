@@ -1,5 +1,5 @@
 {
-  "buildTime": "2026-11-21T17:32:27.662Z",
+  "buildTime": "2026-11-21T17:38:25.892Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
@@ -12,7 +12,7 @@
     {
       "name": "Hitomi (CGs + Galleries)",
       "description": "pisshammy's Hitomi extension plus CGs, image sets and a gallery type picker. 18+ only.",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "icon": "icon.png",
       "language": "multi",
       "contentRating": "ADULT",
