@@ -31,7 +31,7 @@ import {
 } from "@paperback/types/lib/compat/0.8/searchFilters";
 import { closureSelector } from "@paperback/types/lib/impl/Selector.js";
 import { HitomiSettingsForm } from "./forms";
-import { GALLERY_TYPES, getTypesSetting, isHiddenGallery, isMinorTag, setTypesSetting, typesRestricted } from "./plus";
+import { hiddenIds, GALLERY_TYPES, getTypesSetting, isHiddenGallery, isMinorTag, setTypesSetting, typesRestricted } from "./plus";
 import { HitomiInterceptor } from "./interceptors";
 import {
   GalleryIdOptions,
@@ -2265,7 +2265,31 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
     return sections;
   }
 
-  async getDiscoverSectionItems(
+
+  // Flips Extras: drop blocked galleries from every list without breaking the batch they came in.
+  async getDiscoverSectionItems(...args: Parameters<HitomiExtension["getDiscoverSectionItemsInner"]>) {
+    const res = await this.getDiscoverSectionItemsInner(...args);
+    return { ...res, items: res.items.filter((i) => !("mangaId" in i) || !hiddenIds.has(String(i.mangaId))) };
+  }
+
+  async getSearchResults(...args: Parameters<HitomiExtension["getSearchResultsInner"]>) {
+    const res = await this.getSearchResultsInner(...args);
+    return { ...res, items: res.items.filter((i) => !hiddenIds.has(String(i.mangaId))) };
+  }
+
+  async getMangaDetails(mangaId: string) {
+    const res = await this.getMangaDetailsInner(mangaId);
+    if (hiddenIds.has(String(mangaId))) throw new Error("This gallery is blocked in this extension.");
+    return res;
+  }
+
+  async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+    const res = await this.getChapterDetailsInner(chapter);
+    if (hiddenIds.has(String(chapter.sourceManga.mangaId))) throw new Error("This gallery is blocked in this extension.");
+    return res;
+  }
+
+  async getDiscoverSectionItemsInner(
     section: DiscoverSection,
     metadata: JSONValue | undefined,
   ): Promise<PagedResults<DiscoverSectionItem>> {
@@ -2951,7 +2975,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
     return options;
   }
 
-  async getSearchResults(
+  async getSearchResultsInner(
     query: SearchQuery<SearchFilterValue[]>,
     metadata: JSONValue | undefined,
     sortingOption: SortingOption | undefined,
@@ -3651,7 +3675,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
     }
   }
 
-  async getMangaDetails(mangaId: string) {
+  async getMangaDetailsInner(mangaId: string) {
     this.markForegroundGalleryPressure();
     const gallery = await this.loadGalleryWithRetry(mangaId);
     if (this.tagData.size === 0) {
@@ -3754,7 +3778,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
     ];
   }
 
-  async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+  async getChapterDetailsInner(chapter: Chapter): Promise<ChapterDetails> {
     this.markForegroundGalleryPressure();
     // Register the syncGG callback so the interceptor can refresh gg.js lazily
     // when it rewrites hitomi://image/ placeholder URLs at actual download time.
@@ -5623,7 +5647,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
   async loadGallery(id: string): Promise<HitomiGallery> {
     const cached = this.getCachedGallery(id);
     if (cached) {
-      if (isHiddenGallery(cached)) throw new Error("Hidden by gallery type or blocked tag");
+      if (isHiddenGallery(cached)) hiddenIds.add(String(id));
       return cached;
     }
     const pending = this.galleryPending.get(id);
@@ -5635,7 +5659,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
     });
     this.setCachedGallery(id, gallery);
     flushDataReceivedStats();
-    if (isHiddenGallery(gallery)) throw new Error("Hidden by gallery type or blocked tag");
+    if (isHiddenGallery(gallery)) hiddenIds.add(String(id));
     return gallery;
   }
 
