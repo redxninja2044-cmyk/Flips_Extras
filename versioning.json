@@ -1,12 +1,12 @@
 {
-  "buildTime": "2026-11-21T17:13:23.211Z",
+  "buildTime": "2026-11-21T17:16:27.306Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
   },
   "repository": {
-    "name": "paperback-readwise",
-    "description": "Paperback extension for your Readwise Reader library."
+    "name": "Flips Extras",
+    "description": "Flips Extras: Readwise Reader and Hitomi (CGs + Galleries) for Paperback."
   },
   "sources": [
     {
