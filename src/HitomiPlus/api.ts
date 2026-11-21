@@ -73,9 +73,9 @@ function labels(g: Gallery): Set<string> {
 }
 
 /** Hidden by the built-in block, the user's blocklist, or the type filter. */
-export function isHidden(g: Gallery): boolean {
+export function isHidden(g: Gallery, types: string[] = getTypes()): boolean {
   if (isBlocked(g)) return true;
-  if (!getTypes().includes(g.type)) return true;
+  if (!types.includes(g.type)) return true;
   const block = getBlocklist();
   if (!block.length) return false;
   const have = labels(g);
@@ -151,9 +151,9 @@ export async function getGallery(id: string | number): Promise<Gallery> {
   return g;
 }
 
-export async function getGalleries(ids: number[]): Promise<Gallery[]> {
+export async function getGalleries(ids: number[], types?: string[]): Promise<Gallery[]> {
   const res = await Promise.all(ids.map((id) => getGallery(id).catch(() => undefined)));
-  return res.filter((g): g is Gallery => !!g && !isHidden(g));
+  return res.filter((g): g is Gallery => !!g && !isHidden(g, types));
 }
 
 export function coverUrl(g: Gallery): string {

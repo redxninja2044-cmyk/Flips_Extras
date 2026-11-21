@@ -1,9 +1,9 @@
 import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/types";
 
 export default {
-  name: "Hitomi",
+  name: "Hitomi (CGs + Galleries)",
   description: "CGs and image galleries from hitomi.la, with a tag blocklist. 18+ only.",
-  version: "1.0.0-alpha.3",
+  version: "1.0.0-alpha.4",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.ADULT,

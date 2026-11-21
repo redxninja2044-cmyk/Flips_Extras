@@ -1,4 +1,4 @@
-import { AdvancedSearchForm, Form, InputRow, LabelRow, Section, SelectRow } from "@paperback/types";
+import { Form, InputRow, LabelRow, Section, SelectRow } from "@paperback/types";
 
 export const TYPES = [
   { id: "artistcg", title: "Artist CG" },
@@ -93,44 +93,3 @@ export class HitomiSettingsForm extends Form {
   }
 }
 
-/** Search filter screen. Types and blocklist here are the same saved settings as the settings page. */
-export type SearchMeta = { include?: string };
-
-export class HitomiSearchForm extends AdvancedSearchForm {
-  private meta: SearchMeta;
-  constructor(meta: SearchMeta | undefined) {
-    super();
-    this.meta = { ...(meta ?? {}) };
-  }
-  override getSearchQueryMetadata(): SearchMeta {
-    return this.meta;
-  }
-  override getSections() {
-    const s = new HitomiSettingsForm();
-    return [
-      Section(
-        { id: "inc", header: "Must have tags", footer: "Comma separated, e.g. female:glasses, artist:name, series:name" },
-        [
-          InputRow("include", {
-            title: "Tags",
-            value: this.meta.include ?? "",
-            onValueChange: Application.Selector(this as HitomiSearchForm, "setInclude"),
-          }),
-        ],
-      ),
-      ...s.getSections(),
-    ];
-  }
-  async setInclude(v: string): Promise<void> {
-    this.meta.include = v;
-  }
-  async setTypes(v: string[]): Promise<void> {
-    Application.setState(v, K_TYPES);
-  }
-  async setLang(v: string[]): Promise<void> {
-    Application.setState(v[0] ?? "english", K_LANG);
-  }
-  async setBlock(v: string): Promise<void> {
-    Application.setState(v, K_BLOCK);
-  }
-}

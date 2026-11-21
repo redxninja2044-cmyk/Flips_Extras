@@ -15,6 +15,7 @@ import {
   type SearchQuery,
   type SearchResultItem,
   type SourceManga,
+  type SortingOption,
 } from "@paperback/types";
 
 import {
@@ -36,7 +37,15 @@ import {
   type Gallery,
 } from "./api";
 import type HitomiConfig from "./pbconfig";
-import { HitomiSearchForm, HitomiSettingsForm, type SearchMeta } from "./settings";
+import { buildFilters, getSavedFilters, HitomiFilterForm, lengthOk, saveFilters, tagRef, type SearchFilterValue } from "./filters";
+import { getTypes, HitomiSettingsForm } from "./settings";
+
+type Tri = Record<string, "included" | "excluded">;
+// Filter tag ids are like "female:big_breasts" or "sole_female"; plain tags need the tag: prefix for lookup.
+const withPrefix = (id: string) => {
+  const ref = tagRef(id);
+  return (/^(female|male|artist|group|series|character|type|tag):/.test(ref) ? ref : `tag:${ref}`).replace(/ /g, "_");
+};
 
 type Page = { page?: number; offset?: number } | undefined;
 
@@ -59,7 +68,6 @@ const SECTIONS: Record<string, { title: string; url: () => string }> = {
 };
 
 const searchCache = new Map<string, number[]>();
-const cacheKey = (t: string) => `${t}|${lang()}|${JSON.stringify(Application.getState("hitomi.types") ?? "")}`;
 
 function artistLine(g: Gallery): string {
   const names = [...(g.artists ?? []).map((a) => a.artist), ...(g.groups ?? []).map((x) => x.group)];
@@ -99,66 +107,101 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
     return { items, metadata: next !== undefined ? { offset: next } : undefined };
   }
 
-  // Search box: plain words, namespaced terms like female:glasses / artist:name / series:name, and -term to exclude.
-  async getSearchResults(query: SearchQuery<JSONValue>, metadata: Page): Promise<PagedResults<SearchResultItem>> {
-    const page = metadata?.page ?? 0;
-    const meta = (query.metadata ?? {}) as SearchMeta;
-    // Typed text plus "must have" tags from the filter screen; spaces inside a tag become _.
-    const extra = (meta.include ?? "").split(",").map((t) => t.trim().toLowerCase().replace(/\s+/g, "_")).filter(Boolean);
-    const text = [(query.title ?? "").trim().toLowerCase(), ...extra].filter(Boolean).join(" ");
-    let ids: number[];
-
-    if (!text) {
-      const r = await nozomiPage(SECTIONS.latest!.url(), metadata?.offset ?? 0);
-      const items = (await getGalleries(r.ids)).map((g) => ({
-        mangaId: String(g.id), title: g.title, imageUrl: coverUrl(g), subtitle: artistLine(g) || undefined,
-      }));
-      return { items, metadata: r.next !== undefined ? { offset: r.next } : undefined };
-    } else {
-      let all = searchCache.get(cacheKey(text));
-      if (!all) {
-        all = await this.runSearch(text);
-        searchCache.set(cacheKey(text), all);
-      }
-      ids = all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-    }
-
-    const items: SearchResultItem[] = (await getGalleries(ids)).map((g) => ({
-      mangaId: String(g.id),
-      title: g.title,
-      imageUrl: coverUrl(g),
-      subtitle: artistLine(g) || undefined,
-    }));
-    return { items, metadata: ids.length === PAGE_SIZE ? { page: page + 1 } : undefined };
+  async getSortingOptions(): Promise<SortingOption[]> {
+    return [
+      { id: "latest", label: "Date Added" },
+      { id: "today", label: "Popular Today" },
+      { id: "week", label: "Popular This Week" },
+      { id: "month", label: "Popular This Month" },
+      { id: "year", label: "Popular This Year" },
+    ];
   }
 
-  private async runSearch(text: string): Promise<number[]> {
-    const terms = text.split(/\s+/).filter(Boolean);
-    const include = terms.filter((t) => !t.startsWith("-"));
-    const exclude = terms.filter((t) => t.startsWith("-")).map((t) => t.slice(1));
-    const fetchTerm = (t: string) => {
-      const url = nozomiForTerm(t);
-      return url ? nozomiAll(url) : searchWord(t).catch(() => []);
-    };
-
-    // Must also be in the chosen language and types.
-    const sets = await Promise.all([...include.map(fetchTerm), nozomiAll(`${LTN}/index-${lang()}.nozomi`)]);
-    const allowed = await typeIds();
-    let result = (sets[0] ?? []).filter((id) => !allowed || allowed.has(id));
-    for (const s of sets.slice(1)) {
-      const keep = new Set(s);
-      result = result.filter((id) => keep.has(id));
-    }
-    const banned = new Set((await Promise.all(exclude.map(fetchTerm))).flat());
-    return [...new Set(result)].filter((id) => !banned.has(id)).sort((a, b) => b - a);
-  }
-
-  async getAdvancedSearchForm(query: SearchQuery<JSONValue>): Promise<HitomiSearchForm> {
-    return new HitomiSearchForm(query.metadata as SearchMeta | undefined);
+  async getAdvancedSearchForm(query: SearchQuery<SearchFilterValue[]>): Promise<HitomiFilterForm> {
+    return new HitomiFilterForm(query.metadata, buildFilters());
   }
 
   async supportsTagExclusion(): Promise<boolean> {
-    return false;
+    return true;
+  }
+
+  // Search box: plain words, namespaced terms like female:glasses / artist:name / series:name, and -term to exclude.
+  async getSearchResults(
+    query: SearchQuery<SearchFilterValue[]>,
+    metadata: Page,
+    sorting: SortingOption | undefined,
+  ): Promise<PagedResults<SearchResultItem>> {
+    const page = metadata?.page ?? 0;
+    const values = Array.isArray(query.metadata) ? query.metadata : undefined;
+    if (values && page === 0) saveFilters(values);
+    const saved = getSavedFilters();
+    const pick = (id: string) => values?.find((v) => v.id === id)?.value ?? saved[id];
+    const types = (pick("types") as Tri | undefined) ?? {};
+    const tags = (pick("tags") as Tri | undefined) ?? {};
+    const length = (pick("length") as string | undefined) ?? "all";
+
+    const text = (query.title ?? "").trim().toLowerCase();
+    const terms = text.split(/\s+/).filter(Boolean);
+    const include = [
+      ...terms.filter((t) => !t.startsWith("-")),
+      ...Object.keys(tags).filter((k) => tags[k] === "included").map(withPrefix),
+    ];
+    const exclude = [
+      ...terms.filter((t) => t.startsWith("-")).map((t) => t.slice(1)),
+      ...Object.keys(tags).filter((k) => tags[k] === "excluded").map(withPrefix),
+    ];
+    const incTypes = Object.keys(types).filter((k) => types[k] === "included");
+    const excTypes = Object.keys(types).filter((k) => types[k] === "excluded");
+    const sortId = sorting?.id && SECTIONS[sorting.id] ? sorting.id : "latest";
+
+    const key = JSON.stringify([include, exclude, incTypes, excTypes, sortId, lang()]);
+    let all = searchCache.get(key);
+    if (!all) {
+      all = await this.runSearch(include, exclude, incTypes, excTypes, SECTIONS[sortId]!.url());
+      if (searchCache.size > 20) searchCache.clear();
+      searchCache.set(key, all);
+    }
+    const ids = all.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    const allowedTypes = incTypes.length ? incTypes : getTypes();
+    const items: SearchResultItem[] = (await getGalleries(ids, allowedTypes))
+      .filter((g) => lengthOk(length, g.files.length))
+      .map((g) => ({
+        mangaId: String(g.id),
+        title: g.title,
+        imageUrl: coverUrl(g),
+        subtitle: artistLine(g) || undefined,
+      }));
+    return { items, metadata: ids.length === PAGE_SIZE ? { page: page + 1 } : undefined };
+  }
+
+  private async runSearch(
+    include: string[],
+    exclude: string[],
+    incTypes: string[],
+    excTypes: string[],
+    sortUrl: string,
+  ): Promise<number[]> {
+    const fetchTerm = (t: string) => {
+      const url = nozomiForTerm(t);
+      return url ? nozomiAll(url) : searchWord(t).catch(() => [] as number[]);
+    };
+    const typeList = (incTypes.length ? incTypes : getTypes()).filter((t) => !excTypes.includes(t));
+    const [base, typeSets, incSets, excSets] = await Promise.all([
+      nozomiAll(sortUrl),
+      Promise.all(typeList.map((t) => nozomiAll(`${LTN}/type/${t}-${lang()}.nozomi`))),
+      Promise.all(include.map(fetchTerm)),
+      Promise.all(exclude.map(fetchTerm)),
+    ]);
+    const typeSet = new Set(typeSets.flat());
+    const must = incSets.map((s) => new Set(s));
+    const banned = new Set(excSets.flat());
+    const seen = new Set<number>();
+    // Keep the sort order of the chosen list (newest or most popular first).
+    return base.filter((id) => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return typeSet.has(id) && !banned.has(id) && must.every((m) => m.has(id));
+    });
   }
 
   getMangaShareUrl(mangaId: string): string {
@@ -220,4 +263,4 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
   }
 }
 
-export const Hitomi = new HitomiExtension();
+export const HitomiPlus = new HitomiExtension();
