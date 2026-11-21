@@ -1,0 +1,16 @@
+{
+  "name": "paperback-readwise",
+  "private": true,
+  "description": "Paperback extension for your Readwise Reader library.",
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc",
+    "bundle": "paperback-cli bundle",
+    "serve": "paperback-cli serve"
+  },
+  "devDependencies": {
+    "@paperback/toolchain": "^1.0.0-alpha.94",
+    "@paperback/types": "^1.0.0-alpha.94",
+    "typescript": "^7.0.2"
+  }
+}
