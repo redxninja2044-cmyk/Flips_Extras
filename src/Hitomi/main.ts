@@ -36,7 +36,7 @@ import {
   type Gallery,
 } from "./api";
 import type HitomiConfig from "./pbconfig";
-import { HitomiSettingsForm } from "./settings";
+import { HitomiSearchForm, HitomiSettingsForm, type SearchMeta } from "./settings";
 
 type Page = { page?: number; offset?: number } | undefined;
 
@@ -102,7 +102,10 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
   // Search box: plain words, namespaced terms like female:glasses / artist:name / series:name, and -term to exclude.
   async getSearchResults(query: SearchQuery<JSONValue>, metadata: Page): Promise<PagedResults<SearchResultItem>> {
     const page = metadata?.page ?? 0;
-    const text = (query.title ?? "").trim().toLowerCase();
+    const meta = (query.metadata ?? {}) as SearchMeta;
+    // Typed text plus "must have" tags from the filter screen; spaces inside a tag become _.
+    const extra = (meta.include ?? "").split(",").map((t) => t.trim().toLowerCase().replace(/\s+/g, "_")).filter(Boolean);
+    const text = [(query.title ?? "").trim().toLowerCase(), ...extra].filter(Boolean).join(" ");
     let ids: number[];
 
     if (!text) {
@@ -150,6 +153,14 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
     return [...new Set(result)].filter((id) => !banned.has(id)).sort((a, b) => b - a);
   }
 
+  async getAdvancedSearchForm(query: SearchQuery<JSONValue>): Promise<HitomiSearchForm> {
+    return new HitomiSearchForm(query.metadata as SearchMeta | undefined);
+  }
+
+  async supportsTagExclusion(): Promise<boolean> {
+    return false;
+  }
+
   getMangaShareUrl(mangaId: string): string {
     return `${BASE}/reader/${mangaId}.html`;
   }
@@ -179,7 +190,7 @@ export class HitomiExtension implements ExtensionImpl<typeof HitomiConfig> {
           {
             id: "tags",
             title: "Tags",
-            tags: (g.tags ?? []).map((t) => ({ id: tagLabel(t), title: tagLabel(t) })),
+            tags: (g.tags ?? []).map((t) => ({ id: tagLabel(t).replace(/\s+/g, "_").replace(/[^A-Za-z0-9._\-@()\[\]%?#+=/&:]/g, ""), title: tagLabel(t) })),
           },
         ],
         shareUrl: this.getMangaShareUrl(mangaId),
