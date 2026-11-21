@@ -24,7 +24,7 @@ type BookCursor = { cat: number; cursor?: string } | undefined;
 type TagFilter = { tags?: Record<string, string> };
 
 const CATEGORY_LABEL: Record<string, string> = {
-  article: "Article", email: "Email", rss: "Feed", pdf: "Book", epub: "Book",
+  article: "Article", email: "Email", rss: "Feed", pdf: "Novel", epub: "Novel",
   tweet: "Tweet", video: "Video",
 };
 
@@ -58,7 +58,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
 
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
-      { id: "books", title: "Books", type: DiscoverSectionType.simpleCarousel },
+      { id: "books", title: "Novels", type: DiscoverSectionType.simpleCarousel },
       { id: "tags", title: "Series", type: DiscoverSectionType.genres },
     ];
   }
