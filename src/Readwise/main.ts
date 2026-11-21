@@ -59,7 +59,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
   async getDiscoverSections(): Promise<DiscoverSection[]> {
     return [
       { id: "books", title: "Books", type: DiscoverSectionType.simpleCarousel },
-      { id: "tags", title: "Tags", type: DiscoverSectionType.genres },
+      { id: "tags", title: "Series", type: DiscoverSectionType.genres },
     ];
   }
 
@@ -141,7 +141,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
         tagGroups: [
           {
             id: "tags",
-            title: "Tags",
+            title: "Series",
             tags: tagNames(doc).map((t) => ({ id: t, title: t })),
           },
         ],

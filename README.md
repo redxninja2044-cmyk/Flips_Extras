@@ -7,4 +7,4 @@ A Paperback (0.9 beta) extension that shows your own Readwise Reader library as 
 2. Repository Base URL: `https://redxninja2044-cmyk.github.io/PaperBack_Readwise/`
 3. Install "Readwise Reader", open its settings, and paste your token from https://readwise.io/access_token
 
-Home shows your Books (EPUBs and PDFs) and a Tags row; tap a tag to filter. Each book is one long chapter.
+Home shows your Books (EPUBs and PDFs) and a Series row (your Readwise tags); tap one to filter. Each book is one long chapter.

@@ -4,7 +4,7 @@ export default {
   name: "Readwise Reader",
   description:
     "Read your own Readwise Reader library (books: EPUBs and PDFs) in Paperback. Needs your Readwise access token.",
-  version: "1.0.0-alpha.4",
+  version: "1.0.0-alpha.5",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,
