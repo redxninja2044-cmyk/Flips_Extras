@@ -1,5 +1,5 @@
 {
-  "buildTime": "2026-11-21T05:04:53.978Z",
+  "buildTime": "2026-11-21T05:19:13.659Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
@@ -12,7 +12,7 @@
     {
       "name": "Readwise Reader",
       "description": "Read your own Readwise Reader library (articles, EPUBs, PDFs as text) in Paperback. Needs your Readwise access token.",
-      "version": "1.0.0-alpha.2",
+      "version": "1.0.0-alpha.3",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
