@@ -4,7 +4,7 @@ import { ContentRating, ExtensionInfo, SourceIntents } from "@paperback/types";
 export default {
   name: "Hitomi (CGs + Galleries)",
   description: "pisshammy's Hitomi extension plus CGs, image sets and a gallery type picker. 18+ only.",
-  version: "2.1.3",
+  version: "2.2.0",
   icon: "icon.png",
   language: "multi",
   contentRating: ContentRating.ADULT,

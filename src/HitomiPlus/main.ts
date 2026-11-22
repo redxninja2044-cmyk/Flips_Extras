@@ -2928,6 +2928,13 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
         allowEmptySelection: true,
         maximum: undefined,
       },
+      {
+        id: "artistNames",
+        type: "input",
+        title: "Artists / Groups",
+        placeholder: "Comma separated, e.g. name one, name two",
+        value: "",
+      },
     );
 
     return filters;
@@ -3437,6 +3444,25 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
             if (lengthFilter) {
               if (lengthFilter.min !== undefined) minPages = lengthFilter.min;
               if (lengthFilter.max !== undefined) maxPages = lengthFilter.max;
+            }
+          } else if (
+            filter.id === "artistNames" &&
+            typeof filter.value === "string"
+          ) {
+            // Flips Extras: each name matches that artist OR a group with that name.
+            for (const raw of filter.value.split(",")) {
+              const name = raw.trim().toLowerCase();
+              if (!name) continue;
+              const negative = name.startsWith("-");
+              const clean = negative ? name.slice(1).trim() : name;
+              if (negative) {
+                tags.push({ type: "artist", name: clean, isNegative: true });
+                tags.push({ type: "group", name: clean, isNegative: true });
+              } else {
+                const group = tags.reduce((max, tag) => Math.max(max, tag.orGroup ?? 0), 0) + 1;
+                tags.push({ type: "artist", name: clean, isNegative: false, orGroup: group });
+                tags.push({ type: "group", name: clean, isNegative: false, orGroup: group });
+              }
             }
           } else if (
             filter.id === "pagesExpr" &&
