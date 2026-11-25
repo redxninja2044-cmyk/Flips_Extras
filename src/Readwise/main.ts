@@ -169,7 +169,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
           {
             id: "tags",
             title: "Series",
-            tags: tagNames(doc).map((t) => ({ id: t, title: t })),
+            tags: tagNames(doc).map((t) => ({ id: tagId(t), title: t })),
           },
         ],
         synopsis: doc.summary ?? "",
