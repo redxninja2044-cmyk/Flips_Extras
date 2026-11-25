@@ -119,7 +119,8 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
         title: docTitle(doc),
         imageUrl: cover(doc),
         subtitle: doc.author ?? undefined,
-      }));
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
     return { items, metadata: undefined };
   }
 

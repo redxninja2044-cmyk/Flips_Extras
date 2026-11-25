@@ -84,7 +84,9 @@ export async function getAllBooks(): Promise<ReaderDoc[]> {
   const books: ReaderDoc[] = [];
   for (const category of BOOK_CATEGORIES) {
     let cursor: string | undefined;
-    for (let i = 0; i < 5; i++) {
+    // 100 docs per page; 12 pages covers 1,200 per category. The extension's rate limiter
+    // spaces requests 3 seconds apart, which keeps this under Readwise's 20 list requests per minute.
+    for (let i = 0; i < 12; i++) {
       const res = await listDocs({ category, pageCursor: cursor });
       books.push(...res.results.filter(isDocument));
       cursor = res.nextPageCursor ?? undefined;
