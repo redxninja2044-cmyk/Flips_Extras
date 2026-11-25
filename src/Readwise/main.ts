@@ -13,12 +13,23 @@ import {
   type JSONValue,
   type SearchResultItem,
   type SourceManga,
+  type SortingOption,
 } from "@paperback/types";
 
 import { BOOK_CATEGORIES, getAllBooks, getDoc, isDocument, listDocs, tagNames, type ReaderDoc } from "./api";
 import { toXhtmlBody } from "./html";
 import type ReadwiseConfig from "./pbconfig";
 import { ReadwiseSettingsForm } from "./settings";
+import {
+  applyFilters,
+  buildFilters,
+  getSavedFilters,
+  ReadwiseFilterForm,
+  saveFilters,
+  SORTS,
+  tagId,
+  type SearchFilterValue,
+} from "./filters";
 
 type BookCursor = { cat: number; cursor?: string } | undefined;
 type TagFilter = { tags?: Record<string, string> };
@@ -97,30 +108,45 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
     return { items, metadata: next };
   }
 
+  async getSortingOptions(): Promise<SortingOption[]> {
+    return SORTS;
+  }
+
+  async getAdvancedSearchForm(query: SearchQuery<SearchFilterValue[]>): Promise<ReadwiseFilterForm> {
+    const meta = Array.isArray(query.metadata) ? query.metadata : undefined;
+    return new ReadwiseFilterForm(meta, buildFilters());
+  }
+
   async getSearchResults(
     query: SearchQuery<JSONValue>,
     _metadata: JSONValue | undefined,
+    sorting?: SortingOption,
   ): Promise<PagedResults<SearchResultItem>> {
-    const needle = (query.title ?? "").toLowerCase().trim();
-    const filter = (query.metadata ?? {}) as TagFilter;
-    const included = Object.entries(filter.tags ?? {})
-      .filter(([, v]) => v === "included")
-      .map(([k]) => k);
+    let values: Record<string, SearchFilterValue["value"]>;
+    if (Array.isArray(query.metadata)) {
+      // Submitted from the filter screen; remembered for next time, like the Hitomi extension.
+      const submitted = query.metadata as SearchFilterValue[];
+      saveFilters(submitted);
+      values = Object.fromEntries(submitted.map((v) => [v.id, v.value]));
+    } else if (query.metadata && (query.metadata as TagFilter).tags) {
+      // Tapped a Series tile on the home page: show just that series, ignoring saved filters.
+      const names = Object.keys((query.metadata as TagFilter).tags ?? {});
+      values = { tags: Object.fromEntries(names.map((n) => [tagId(n), "included" as const])) };
+    } else {
+      values = getSavedFilters();
+    }
 
-    const items: SearchResultItem[] = (await getAllBooks())
-      .filter((doc) => {
-        const hay = `${doc.title ?? ""} ${doc.author ?? ""}`.toLowerCase();
-        if (needle && !hay.includes(needle)) return false;
-        const tags = tagNames(doc);
-        return included.every((t) => tags.includes(t));
-      })
-      .map((doc) => ({
-        mangaId: doc.id,
-        title: docTitle(doc),
-        imageUrl: cover(doc),
-        subtitle: doc.author ?? undefined,
-      }))
-      .sort((a, b) => a.title.localeCompare(b.title, undefined, { numeric: true }));
+    const items: SearchResultItem[] = applyFilters(
+      await getAllBooks(),
+      query.title ?? "",
+      values,
+      sorting?.id ?? "title",
+    ).map((doc) => ({
+      mangaId: doc.id,
+      title: docTitle(doc),
+      imageUrl: cover(doc),
+      subtitle: doc.author ?? undefined,
+    }));
     return { items, metadata: undefined };
   }
 
