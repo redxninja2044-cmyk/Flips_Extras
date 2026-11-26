@@ -13,7 +13,7 @@ export function setToken(value: string): void {
 export class ReadwiseSettingsForm extends Form {
   override getSections() {
     return [
-      Section({ id: "token", header: "Readwise Access Token" }, [
+      Section({ id: "token", header: "Account" }, [
         InputRow("token", {
           title: "Access Token",
           value: getToken(),
@@ -21,7 +21,7 @@ export class ReadwiseSettingsForm extends Form {
           onValueChange: Application.Selector(this as ReadwiseSettingsForm, "handleTokenChange"),
         }),
         LabelRow("help", {
-          title: "Get it at readwise.io/access_token",
+          title: "readwise.io/access_token",
         }),
       ]),
     ];

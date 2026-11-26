@@ -1,7 +1,7 @@
 {
   "name": "Flips Extras",
   "private": true,
-  "description": "Flips Extras: Readwise Reader and Hitomi (CGs + Galleries) for Paperback.",
+  "description": "Readwise Reader and Hitomi for Paperback.",
   "type": "module",
   "scripts": {
     "tsc": "tsc",

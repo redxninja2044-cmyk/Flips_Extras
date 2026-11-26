@@ -17,8 +17,8 @@ export type Tri = Record<string, "included" | "excluded">;
 export const tagId = (name: string) => encodeURIComponent(name).replace(/[^A-Za-z0-9._\-%]/g, "_");
 
 export const SORTS = [
-  { id: "title", label: "Title (A to Z)" },
-  { id: "title_desc", label: "Title (Z to A)" },
+  { id: "title", label: "Title A-Z" },
+  { id: "title_desc", label: "Title Z-A" },
   { id: "added", label: "Recently Added" },
   { id: "updated", label: "Recently Updated" },
   { id: "author", label: "Author" },
@@ -64,7 +64,7 @@ export async function buildFilters(): Promise<SearchFilter[]> {
     {
       id: "tags",
       type: "multiselect",
-      title: "Tags / Series (tap once to include, twice to exclude)",
+      title: "Series",
       options: sorted.map((t) => ({ id: t.id, value: `${t.name} (${t.count})` })),
       value: savedTags,
       allowExclusion: true,
@@ -75,7 +75,7 @@ export async function buildFilters(): Promise<SearchFilter[]> {
       id: "author",
       type: "input",
       title: "Author",
-      placeholder: "Comma separated; put - in front to hide",
+      placeholder: "",
       value: (saved.author as string | undefined) ?? "",
     },
   ];
@@ -137,9 +137,9 @@ export function applyFilters(
 
 export class ReadwiseFilterForm extends SearchFilterForm {
   override getSections() {
-    if (!this.filters) return [Section("loading", [LabelRow("loading", { title: "Loading your library..." })])];
+    if (!this.filters) return [Section("loading", [LabelRow("loading", { title: "Loading..." })])];
     if (this.filters instanceof Error)
-      return [Section("error", [LabelRow("error", { title: "Couldn't load filters", subtitle: this.filters.message })])];
+      return [Section("error", [LabelRow("error", { title: "Error", subtitle: this.filters.message })])];
 
     return this.filters.map((filter) => {
       if (filter.type === "multiselect") {
@@ -157,7 +157,7 @@ export class ReadwiseFilterForm extends SearchFilterForm {
       }
       if (filter.type === "input") {
         const value = (this.selectedFilterValues[filter.id] ?? filter.value) as string;
-        return Section({ id: filter.id, header: filter.title, footer: filter.placeholder }, [
+        return Section({ id: filter.id, header: filter.title }, [
           InputRow(filter.id, {
             title: filter.title,
             value,

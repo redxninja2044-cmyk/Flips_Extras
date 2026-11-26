@@ -2,9 +2,8 @@ import { ContentRating, SourceIntents, type ExtensionInfo } from "@paperback/typ
 
 export default {
   name: "Readwise Reader",
-  description:
-    "Read your own Readwise Reader library (books: EPUBs and PDFs) in Paperback. Needs your Readwise access token.",
-  version: "1.0.0-alpha.9",
+  description: "Your Readwise Reader library.",
+  version: "1.0.0-alpha.10",
   icon: "icon.png",
   language: "en",
   contentRating: ContentRating.EVERYONE,

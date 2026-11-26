@@ -201,7 +201,7 @@ export class ReadwiseExtension implements ExtensionImpl<typeof ReadwiseConfig> {
     const doc = await getDoc(docId, true);
     const html = doc.html_content ?? "";
     if (!html) {
-      throw new Error("Readwise has no readable text for this document (it may be a video or scanned PDF).");
+      throw new Error("No readable text.");
     }
     const body = toXhtmlBody(`<h2>${docTitle(doc)}</h2>\n` + html);
     return {

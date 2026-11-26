@@ -344,7 +344,6 @@ export class HitomiSettingsForm extends Form {
         }),
         SelectRow("galleryTypesNav", {
           title: "Gallery Types",
-          subtitle: "What shows on the home page and in search. Default: all.",
           layout: "list",
           value: getTypesSetting(),
           items: GALLERY_TYPES,

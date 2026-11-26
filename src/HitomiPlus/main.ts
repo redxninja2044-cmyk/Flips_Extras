@@ -2279,13 +2279,13 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
 
   async getMangaDetails(mangaId: string) {
     const res = await this.getMangaDetailsInner(mangaId);
-    if (hiddenIds.has(String(mangaId))) throw new Error("This gallery is blocked in this extension.");
+    if (hiddenIds.has(String(mangaId))) throw new Error("Unavailable.");
     return res;
   }
 
   async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
     const res = await this.getChapterDetailsInner(chapter);
-    if (hiddenIds.has(String(chapter.sourceManga.mangaId))) throw new Error("This gallery is blocked in this extension.");
+    if (hiddenIds.has(String(chapter.sourceManga.mangaId))) throw new Error("Unavailable.");
     return res;
   }
 
@@ -2885,7 +2885,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
       {
         id: "galleryTypes",
         type: "multiselect",
-        title: "Gallery Type",
+        title: "Type",
         options: GALLERY_TYPES.map((t) => ({ id: t.id, value: t.title })),
         value: Object.fromEntries(savedTypes.map((t) => [t, "included" as const])),
         allowExclusion: false,
@@ -2931,8 +2931,8 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
       {
         id: "artistNames",
         type: "input",
-        title: "Artists / Groups",
-        placeholder: "Comma separated, e.g. name one, name two",
+        title: "Artists",
+        placeholder: "",
         value: "",
       },
     );

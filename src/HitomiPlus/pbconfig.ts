@@ -2,9 +2,9 @@
 import { ContentRating, ExtensionInfo, SourceIntents } from "@paperback/types";
 
 export default {
-  name: "Hitomi (CGs + Galleries)",
-  description: "pisshammy's Hitomi extension plus CGs, image sets and a gallery type picker. 18+ only.",
-  version: "2.2.0",
+  name: "Hitomi",
+  description: "hitomi.la",
+  version: "2.2.1",
   icon: "icon.png",
   language: "multi",
   contentRating: ContentRating.ADULT,
@@ -17,7 +17,6 @@ export default {
   ],
   badges: [],
   developers: [
-    { name: "Flips Extras (CG/gallery additions)" },
     {
       name: "pisshammy",
       website: "cashapp: $0hammy0",

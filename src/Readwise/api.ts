@@ -30,7 +30,7 @@ type ListResponse = {
 export async function listDocs(params: Record<string, string | undefined>): Promise<ListResponse> {
   const token = getToken();
   if (!token) {
-    throw new Error("Add your Readwise access token in this extension's settings first.");
+    throw new Error("No access token set.");
   }
   const qs = Object.entries(params)
     .filter(([, v]) => v !== undefined && v !== "")
@@ -44,10 +44,10 @@ export async function listDocs(params: Record<string, string | undefined>): Prom
   });
 
   if (response.status === 401 || response.status === 403) {
-    throw new Error("Readwise rejected the token. Check it in this extension's settings.");
+    throw new Error("Invalid access token.");
   }
   if (response.status === 429) {
-    throw new Error("Readwise rate limit hit. Wait a minute and try again.");
+    throw new Error("Rate limited. Try again in a minute.");
   }
   if (response.status >= 400) {
     throw new Error(`Readwise returned HTTP ${response.status}.`);
