@@ -1,18 +1,18 @@
 {
-  "buildTime": "2026-11-25T04:48:14.741Z",
+  "buildTime": "2026-11-26T03:08:12.670Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.95",
     "types": "1.0.0-alpha.95"
   },
   "repository": {
     "name": "Flips Extras",
-    "description": "Flips Extras: Readwise Reader and Hitomi (CGs + Galleries) for Paperback."
+    "description": "Readwise Reader and Hitomi for Paperback."
   },
   "sources": [
     {
-      "name": "Hitomi (CGs + Galleries)",
-      "description": "pisshammy's Hitomi extension plus CGs, image sets and a gallery type picker. 18+ only.",
-      "version": "2.2.0",
+      "name": "Hitomi",
+      "description": "hitomi.la",
+      "version": "2.2.1",
       "icon": "icon.png",
       "language": "multi",
       "contentRating": "ADULT",
@@ -26,9 +26,6 @@
       "badges": [],
       "developers": [
         {
-          "name": "Flips Extras (CG/gallery additions)"
-        },
-        {
           "name": "pisshammy",
           "website": "cashapp: $0hammy0"
         }
@@ -37,8 +34,8 @@
     },
     {
       "name": "Readwise Reader",
-      "description": "Read your own Readwise Reader library (books: EPUBs and PDFs) in Paperback. Needs your Readwise access token.",
-      "version": "1.0.0-alpha.9",
+      "description": "Your Readwise Reader library.",
+      "version": "1.0.0-alpha.10",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
