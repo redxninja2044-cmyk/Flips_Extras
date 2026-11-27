@@ -33,7 +33,29 @@ const MINOR = /RNGknkng|fjJFdJKDFHjk|FKJENFjnf/i;
 export function isMinorTag(name: string): boolean {
   return MINOR.test(name);
 }
+const BLOCKED_ARTISTS_KEY = "hitomiplus.blockedArtists";
+export function getBlockedArtistsText(): string {
+  return (Application.getState(BLOCKED_ARTISTS_KEY) as string | undefined) ?? "";
+}
+export function setBlockedArtistsText(v: string): void {
+  Application.setState(v, BLOCKED_ARTISTS_KEY);
+  blockedCache = undefined;
+  hiddenIds.clear();
+}
+let blockedCache: string[] | undefined;
+function blockedArtists(): string[] {
+  if (!blockedCache) {
+    blockedCache = getBlockedArtistsText()
+      .split(",")
+      .map((a) => a.trim().toLowerCase().replace(/_/g, " "))
+      .filter(Boolean);
+  }
+  return blockedCache;
+}
+
 export function isHiddenGallery(g: HitomiGallery): boolean {
+  const block = blockedArtists();
+  if (block.length && [...(g.artists ?? []), ...(g.groups ?? [])].some((a) => block.includes(a.toLowerCase()))) return true;
   if (typesRestricted() && !getTypesSetting().includes(g.type)) return true;
   return (g.tags ?? []).some((t) => isMinorTag(t?.name ?? ""));
 }

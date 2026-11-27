@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-or-later */
-import { GALLERY_TYPES, getTypesSetting, setTypesSetting } from "./plus";
+import { GALLERY_TYPES, getBlockedArtistsText, getTypesSetting, setBlockedArtistsText, setTypesSetting } from "./plus";
 import {
   ButtonRow,
   EditSection,
@@ -271,6 +271,10 @@ function getDisplayOptionLabel(
 }
 
 export class HitomiSettingsForm extends Form {
+  async updateBlockedArtists(value: string): Promise<void> {
+    setBlockedArtistsText(value);
+  }
+
   async updateGalleryTypes(value: string[]): Promise<void> {
     setTypesSetting(value);
     this.reloadForm();
@@ -350,6 +354,11 @@ export class HitomiSettingsForm extends Form {
           onValueChange: Application.Selector(this as any, "updateGalleryTypes"),
           minItemCount: 1,
           maxItemCount: GALLERY_TYPES.length,
+        }),
+        InputRow("blockedArtists", {
+          title: "Blocked Artists",
+          value: getBlockedArtistsText(),
+          onValueChange: Application.Selector(this as any, "updateBlockedArtists"),
         }),
       ]),
       // Thumbnail and Display Options section
