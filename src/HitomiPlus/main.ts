@@ -2929,6 +2929,30 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
         maximum: undefined,
       },
       {
+        id: "femaleTags",
+        type: "multiselect",
+        title: "Female",
+        options: sortedTags
+          .filter((t) => t.slugs.some((sl) => { const e = this.tagData.get(sl); return e?.type === "female" || this.mergedMaleFemaleTagSlugs.has(sl); }))
+          .map((t) => ({ id: `female:${t.id}`, value: t.display.replace(/\s*-\s*\([^)]*\)\s*$/, "") })),
+        value: {},
+        allowExclusion: true,
+        allowEmptySelection: true,
+        maximum: undefined,
+      },
+      {
+        id: "maleTags",
+        type: "multiselect",
+        title: "Male",
+        options: sortedTags
+          .filter((t) => t.slugs.some((sl) => { const e = this.tagData.get(sl); return e?.type === "male" || this.mergedMaleFemaleTagSlugs.has(sl); }))
+          .map((t) => ({ id: `male:${t.id}`, value: t.display.replace(/\s*-\s*\([^)]*\)\s*$/, "") })),
+        value: {},
+        allowExclusion: true,
+        allowEmptySelection: true,
+        maximum: undefined,
+      },
+      {
         id: "artistNames",
         type: "input",
         title: "Artists",
@@ -3389,7 +3413,7 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
                 if (!entry) return false;
 
                 tags.push({
-                  type: this.mergedMaleFemaleTagSlugs.has(slug)
+                  type: ["tag", "male", "female"].includes(entry.type)
                     ? "ambiguous"
                     : entry.type,
                   name: cleanTagName(entry.ref || slug).replace(/_/g, " "),
@@ -3444,6 +3468,17 @@ export class HitomiExtension implements ExtensionImpl<typeof hitomiInfo> {
             if (lengthFilter) {
               if (lengthFilter.min !== undefined) minPages = lengthFilter.min;
               if (lengthFilter.max !== undefined) maxPages = lengthFilter.max;
+            }
+          } else if (
+            (filter.id === "femaleTags" || filter.id === "maleTags") &&
+            typeof filter.value === "object"
+          ) {
+            const kind = filter.id === "femaleTags" ? "female" : "male";
+            const groups = new Map(this.getSearchFilterTagGroups().map((g) => [g.id, g]));
+            for (const [key, state] of Object.entries(filter.value as Record<string, string>)) {
+              const gid = key.replace(/^(female|male):/, "");
+              const slug = groups.get(gid)?.slugs[0] ?? gid;
+              tags.push({ type: kind, name: cleanTagName(slug).replace(/_/g, " "), isNegative: state === "excluded" });
             }
           } else if (
             filter.id === "artistNames" &&
