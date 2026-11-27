@@ -181,6 +181,17 @@ export async function getGalleryIds(
     tag: HitomiTag,
     lang: string,
   ): Promise<Set<number>> => {
+    if (tag.isFuzzy && tag.forceFuzzy) {
+      // Flips: text typed in the search bar matches titles (B-tree) OR a tag with that
+      // name (female:, male: and plain), like picking the tag on the site.
+      const [btree, asTag] = await Promise.all([
+        searchGalleryIdsByTerm(tag.name, fetcher).catch(() => [] as number[]),
+        fetchNozomiExpansion(tag.name.replace(/_/g, " "), lang),
+      ]);
+      const union = new Set<number>(btree);
+      for (const id of asTag) union.add(id);
+      return union;
+    }
     if (tag.isFuzzy) {
       try {
         const btreeIds = new Set(
